@@ -186,7 +186,7 @@ para("Table of Contents", bold=True, size=16)
 for line in ["Abstract", "1. Problem Definition", "      1.1 Objectives · 1.2 Investigation questions · 1.3 Scope and requirements",
              "2. Literature Survey", "      2.1 Comparison of visualization approaches · 2.2 Research gaps",
              "3. OSINT Data Collection and Source Identification", "      3.1 Chain of custody · 3.2 Dataset profile",
-             "4. System Architecture", "      4.1 Data model", "5. Evaluation of Visualization Techniques",
+             "4. System Architecture", "      4.1 Data model", "5. Evaluation of Visualization Techniques", "      5.1 Worked investigation: how the views support each other",
              "6. Data Processing, Correlation and Analysis",
              "      6.1 Cleaning · 6.2 Correlation and hub suppression · 6.3 Graph · 6.4 Temporal · 6.5 Geographic · 6.6 Social network",
              "7. Tool Implementation and Dashboard", "8. Findings, Evidence and Validation",
@@ -212,7 +212,7 @@ para(f"Open threat-intelligence feeds publish thousands of malicious indicators 
      f"{gr['top10_overlap_ips_vs_normalised']} of the raw top-10 countries (Spearman ρ = {gr['spearman_ips_vs_normalised']}). "
      f"Geolocation was cross-validated against registry data "
      f"({pct(ag['country_agreement'])} country agreement, {pct(ag['asn_agreement'])} ASN agreement). A literature "
-     f"survey of 15 papers identifies the research gaps the architecture addresses.")
+     f"survey of 16 recent papers identifies the research gaps the architecture addresses.")
 
 # ======================================================================= 1 problem
 h1("1. Problem Definition")
@@ -237,7 +237,7 @@ table(["#", "Objective", "Measured by"], [
     ["O5", "Evaluate the suitability of graphs, link charts, timelines and heat maps", "suitability matrix (Section 5)"],
     ["O6", "Implement an interactive dashboard and automated reporting", "Flask dashboard, HTML reports, GEXF/CSV export"],
     ["O7", "Reduce, and quantify, the possibility of misinterpreting evidence", "before/after experiments (Section 8.3)"],
-    ["O8", "Survey at least 10 research papers and identify research gaps", "15-paper comparison (Section 2)"],
+    ["O8", "Survey at least 10 research papers and identify research gaps", "16-paper comparison (Section 2)"],
 ], "Project objectives", widths=[1, 9.5, 6])
 h2("1.2 Investigation questions")
 para("The investigation questions were fixed before any visualization was chosen, so each view could be judged against "
@@ -268,60 +268,72 @@ bullet(" SOC and threat-intelligence analysts triaging malicious infrastructure.
 
 # ======================================================================= 2 literature
 h1("2. Literature Survey")
-para("Fifteen papers were reviewed across five areas required by the brief: OSINT and intelligence analysis, graph "
-     "visualization and analytics, social-network analysis, geographic visualization, and cyber-intelligence "
-     "visualization and dashboards. Table 3 compares their approach, methodology, data, findings and limitations. "
-     "Section 2.2 derives the research gaps that the proposed architecture addresses.")
+para("Sixteen peer-reviewed papers, mostly from 2020–2024, were reviewed across the five areas required by the brief: "
+     "OSINT and threat intelligence, graph analytics and knowledge graphs, social-network analysis, geographic "
+     "visualization and geolocation, and cyber-intelligence visualization and dashboards. Two further papers on "
+     "misleading visualization and timeline design were added, because the brief asks how to reduce misinterpretation. "
+     "Every reference was checked against its publisher or DOI record. Table 3 compares the visualization or "
+     "analytical approach, methodology, dataset, findings and limitations of each paper. Section 2.2 derives the "
+     "research gaps that the proposed architecture addresses.")
 lit = [
-    ["[L1] Pirolli & Card (2005)", "Intelligence analysis", "Cognitive task analysis of intelligence analysts; sensemaking loop (foraging → schema → hypothesis → presentation)", "Interviews and think-aloud with analysts", "Analysts spend most effort on foraging and on keeping track of evidence; leverage points for tools identified", "Conceptual; no implemented system or quantitative evaluation"],
-    ["[L2] Stasko, Görg & Liu (2008) Jigsaw", "Investigative visual analytics", "Entity extraction from documents + linked list, graph, calendar and scatter views", "System design; user study with analysts on a fictional intelligence case", "Multiple coordinated views of entity connections help analysts find plots faster", "Text documents only; entity extraction errors propagate; small user study"],
-    ["[L3] Pastor-Galindo et al. (2020)", "OSINT survey", "Survey of OSINT sources, tools, techniques and applications", "Systematic literature review", "OSINT is under-exploited; integration of sources and analysis is the main challenge", "No implementation; visualization treated only briefly"],
-    ["[L4] Böhm & Lolagar (2021)", "OSINT ethics and law", "Legal and ethical framework for OSINT", "Legal analysis (GDPR, data protection)", "Public does not mean unrestricted; purpose limitation and minimisation apply", "European focus; no technical controls proposed"],
-    ["[L5] Herman, Melançon & Marshall (2000)", "Graph visualization", "Survey of graph layout, navigation and clustering techniques", "Literature survey", "Large graphs need clustering, filtering and focus+context navigation", "Pre-dates modern web tools; no task-based evaluation"],
-    ["[L6] Ghoniem, Fekete & Castagliola (2004)", "Graph readability", "Controlled comparison of node-link diagrams vs adjacency matrices", "User study, 36 participants, 7 tasks on random graphs", "Node-link diagrams read better for small, sparse graphs and path tasks; matrices win for large or dense graphs", "Synthetic graphs; no domain semantics"],
-    ["[L7] Blondel et al. (2008) Louvain", "Graph analytics", "Greedy modularity optimisation for community detection", "Algorithm + evaluation on networks up to 118 M nodes", "Fast, high-modularity communities at very large scale", "Resolution limit; non-deterministic; communities are not ground truth"],
-    ["[L8] Krebs (2002)", "Social-network analysis", "SNA of the 9/11 hijacker network built from public news sources", "Network reconstruction from open sources; centrality", "Key brokers identifiable from public data; covert networks are sparse", "Retrospective; incomplete, noisy data; single case"],
-    ["[L9] Xu & Chen (2005)", "Criminal network analysis", "SNA + visualization for criminal networks (CrimeNet Explorer)", "Concept-space linkage, hierarchical clustering, blockmodelling on police records", "Network visualisation helps identify subgroups and central members", "Police records, not open data; link reliability not modelled"],
-    ["[L10] Chainey, Tompson & Uhlig (2008)", "Geographic visualization", "Comparison of hotspot mapping methods (KDE, grids, ellipses, thematic)", "Prediction accuracy index on UK crime data", "Kernel density estimation predicts future hotspots best; method choice changes the conclusion", "Physical crime, not network infrastructure"],
-    ["[L11] Poese et al. (2011)", "Geolocation reliability", "Accuracy study of commercial IP geolocation databases", "Comparison against ground truth from a large ISP", "Country-level geolocation is mostly right, city-level often wrong; databases disagree", "Single ISP ground truth; databases change over time"],
-    ["[L12] Shiravi, Shiravi & Ghorbani (2012)", "Security visualization", "Survey and taxonomy of network-security visualization systems", "Classification by data source and use case", "Most systems target one data type; evaluation is rare and informal", "Pre-dates threat-intel feeds; few OSINT systems"],
-    ["[L13] Noel et al. (2016) CyGraph", "Cyber graph analytics", "Graph-based knowledge model and visualization of network/attack data", "Property graph (Neo4j) + query language; case studies", "Unified graph enables attack-path and mission-impact queries", "Internal network data; no open-source feeds; limited evaluation"],
-    ["[L14] Wagner et al. (2016) MISP", "Threat-intel platforms", "Design of a collaborative IOC sharing platform with correlation", "System design and operational deployment", "Automatic correlation of shared attributes speeds up analysis", "Correlation over shared attributes produces noisy links; basic visualisation"],
-    ["[L15] Correll & Heer (2017)", "Misleading visualization", "Catalogue of how charts deceive (black-hat visualization)", "Analysis of deceptive design patterns", "Aggregation, scaling and omitted context mislead even honest readers", "Conceptual; no domain-specific safeguards"],
+    ["[L1] Yadav, Kumar & Singh (2023)", "OSINT review", "Survey of OSINT tools, techniques and cyber-security applications", "Literature review", "Published OSINT studies and tools", "OSINT is used widely in cybercrime, forensics and social-network security; automation with ML/AI is the main trend", "Visualization and evidence presentation get little attention; no evaluation framework"],
+    ["[L2] Browne, Abedin & Chowdhury (2024)", "OSINT + AI", "Systematic review of AI applied to OSINT", "PRISMA systematic review", "163 research articles", "Most work focuses on collection and classification (NLP, ML); applications span social media, dark web and threat intelligence", "Few studies address explainability or how results are shown to analysts"],
+    ["[L3] Riebe, Biselli, Kaufhold & Reuter (2023)", "OSINT ethics / privacy", "Acceptance and privacy concerns of OSINT for cyber security", "Representative population survey", "Survey responses from the general public", "Acceptance depends on purpose and transparency; collection of personal data raises strong privacy concerns", "Survey of attitudes, not of tools; single national sample"],
+    ["[L4] Böhm, Menges & Pernul (2018)", "CTI visual analytics", "Graph-based persistence and interactive graph visualization of STIX threat intelligence", "Prototype implementation and demonstration", "Example STIX 2 threat-intelligence data", "Graph views help analysts explore and enrich semi-structured CTI", "Relies on structured STIX input; no geographic or temporal view; small evaluation"],
+    ["[L5] Sarhan & Spruit (2021)", "Knowledge graphs / entity extraction", "Open-CyKG: open information extraction + cyber NER to build a threat-intelligence knowledge graph", "Neural OIE and NER, embedding-based canonicalisation", "APT threat reports (unstructured text)", "Automatically extracted triples form a queryable CTI knowledge graph; components beat baselines", "Extraction errors propagate into the graph; no visualization or provenance for analysts"],
+    ["[L6] Yan, Yang, Shi, Fang, Li & Ye (2023)", "Graph analytics", "Survey of graph-mining methods for cyber security (centrality, community detection, GNNs)", "Systematic survey", "Published graph-based security studies and datasets", "Graphs are a natural model for relations between security entities; graph mining improves detection and attribution", "Focus on algorithms, not on how graphs are visualized or misread"],
+    ["[L7] Pete, Hughes, Chua & Bada (2020)", "Social-network analysis", "SNA of user-interaction networks in six dark-web forums", "Network construction, centrality, community detection", "Six dark-web forum datasets", "Only a small subset of users is influential; forums differ in structure", "Forum data only; links are replies, not verified relationships"],
+    ["[L8] Hu, Wang, Guin & Zhu (2018)", "Geographic visualization", "Spatio-temporal kernel density estimation for hotspot mapping", "STKDE with predictive-accuracy evaluation", "City crime incident records", "Adding time to KDE improves hotspot prediction; bandwidth choice changes the map", "Physical crime, not network infrastructure; parameter-sensitive"],
+    ["[L9] Gouel, Vermeulen, Beverly, Fourmaux & Friedman (2021)", "Geolocation reliability", "Longitudinal stability study of an IP geolocation database", "Snapshot comparison; reproduction of a prior study", "Weekly snapshots of a commercial geolocation database", "Successive snapshots differ significantly; median error shifted >100 km and coverage by 30%", "One database; ground truth limited to some address types"],
+    ["[L10] Jiang, Jayatilaka, Nasim, Grobler, Zahedi & Babar (2022)", "Cyber dashboards", "Systematic review of cyber situational-awareness visualizations", "Systematic literature review", "54 publications", "Most visualizations serve operational staff and the perception level; impact and projection are rarely shown", "Review only; does not propose or test a visualization design"],
+    ["[L11] Komadina, Mihajlović & Groš (2022)", "Security visualization", "Design-space analysis of cyber-security visualizations", "Classification by data, task, encoding, interaction, evaluation", "60 VizSec papers (2016–2021)", "Provides a taxonomy of data, tasks and encodings used in security visualization and shows which combinations are under-explored", "Limited to one venue and six years"],
+    ["[L12] Li, Dunn, Pearce, McCoy, Voelker, Savage & Levchenko (2019)", "Threat-intel feeds", "Metrics for comparing threat-intelligence feeds", "Quantitative feed comparison against external measurements", "Public and commercial IP and hash feeds", "Feeds overlap little and have limited coverage and accuracy", "No visualization; feeds analysed as sets, not as relationships"],
+    ["[L13] Bouwman, Griffioen, Egbers, Doerr, Klievink & van Eeten (2020)", "Threat-intel feeds", "Added value of commercial threat intelligence", "Feed overlap analysis + 14 practitioner interviews", "Two commercial vendors and four open feeds", "Only 2.5–4% indicator overlap for the same 22 actors; analysts judge TI informally", "Two vendors only; little on how TI is visualized"],
+    ["[L14] Kumarasinghe, Nabeel & Elvitigala (2024)", "Hosting infrastructure", "Forecasting malicious domains from the hosting infrastructure they share", "Infrastructure-based features and classification", "Domain, DNS and blocklist data", "Shared low-reputation hosting predicts future malicious domains", "Shared infrastructure can also join benign tenants; classification, not visual analysis"],
+    ["[L15] Lo, Gupta, Shigyo, Wu, Bertini & Qu (2022)", "Misleading visualization", "Taxonomy of misleading visualizations", "Open coding of real-world reported charts", ">1,000 visualizations reported as misleading", "74 types of issues; many arise from honest design choices, not deliberate deception", "General charts; no security-specific safeguards"],
+    ["[L16] Di Bartolomeo et al. (2020)", "Timeline visualization", "Effect of timeline shape on task performance", "Controlled online experiment", "192 participants; recurrent and non-recurrent event data", "Shape changes task time but not accuracy; linear timelines are fastest for lookup", "Synthetic tasks; no investigative context"],
 ]
-table(["Paper", "Area", "Approach / visualization", "Methodology & dataset", "Key findings", "Limitations"], lit,
-      "Comparison of surveyed research", widths=[2.6, 2, 3.4, 3.2, 3.2, 2.6], size=7.5)
+table(["Paper", "Area", "Approach / visualization", "Methodology", "Dataset", "Key findings", "Limitations"], lit,
+      "Comparison of surveyed research", widths=[2.5, 1.7, 2.8, 2.2, 2.2, 3, 2.6], size=7)
 h2("2.1 Comparison of visualization approaches")
-para("The surveyed work uses four families of visualization. Node-link graphs [L2, L5, L9, L13] dominate investigative "
-     "and cyber work because they show connectivity directly. [L6] shows, however, that they lose readability as size "
-     "and density grow, and [L5] recommends clustering and filtering. Link charts, meaning incremental ego-network "
-     "expansion, are the analyst-facing form of the same model; Jigsaw [L2] and MISP [L14] both build on it. Timelines "
-     "and calendar views [L2] support sequence and duration reasoning. Heat maps support density reasoning in space "
-     "[L10] and in time. [L10] and [L11] both show that the chosen method and the underlying data quality change what "
-     "the map appears to say. Social-network analysis [L8, L9] contributes centrality and subgroup measures that turn a "
-     "picture into ranked evidence. Louvain community detection [L7] is the standard scalable way to find those "
-     "subgroups.")
+para("Node-link graphs are the dominant form in cyber-intelligence work. [L11] classifies security visualizations by "
+     "data, task and visual encoding, and graph-based CTI systems [L4, L5] and graph-mining methods [L6] model "
+     "indicators, actors and infrastructure as linked entities. Link charts are the analyst-facing, incremental form of "
+     "the same model: [L4] lets analysts explore STIX objects from a starting node. Graph analytics turns pictures into "
+     "ranked evidence: centrality and community detection identify key actors [L6, L7]. Timelines support sequence and "
+     "duration reasoning, and [L16] shows that a plain linear layout is fastest for lookup tasks, which is why this "
+     "platform uses linear daily and Gantt timelines. Heat maps support density reasoning in space and time [L8]. "
+     "However, [L8] shows that parameter choices change the hotspot map, and [L9] shows that the geolocation feeding "
+     "such maps is itself unstable. Dashboards combine these views [L10], but most serve operational monitoring at the "
+     "perception level rather than investigation [L10].")
+para("On data, [L12] and [L13] show that threat feeds overlap very little. Combining several feeds is therefore "
+     "necessary, and corroboration across feeds is informative. [L14] shows that shared hosting is a strong signal of "
+     "malicious infrastructure, but also that it connects unrelated tenants. On interpretation, [L15] shows that most "
+     "misleading charts come from ordinary design choices such as aggregation, scaling and omitted context, and the "
+     "OSINT literature [L1, L2, L3] stresses transparency and purpose limitation.")
 h2("2.2 Research gaps addressed by this project")
 gaps = [
-    ("G1 – Evidence provenance in the view. ", "Graph-based systems [L2, L9, L13, L14] draw links but rarely let the analyst "
-     "see, on the link itself, which source record created it, by what method and with what confidence. Pirolli & Card "
-     "[L1] identify keeping track of evidence as a key leverage point. → Every edge in this platform carries source, "
-     "record ID, time, method and confidence, shown in an evidence panel."),
-    ("G2 – False links through shared infrastructure. ", "Attribute-based correlation [L14] and large-graph analytics "
-     "[L13] connect everything that shares an attribute. In open feeds, CDNs, code-hosting and paste platforms are "
-     "shared by thousands of unrelated actors. The effect is noted informally but rarely measured. → Hub suppression, "
-     "quantified before and after (Section 8.3)."),
-    ("G3 – Normalisation and uncertainty in geographic views. ", "Hotspot work [L10] shows that method changes the "
-     "conclusion, and [L11] shows geolocation error. Cyber-threat maps nevertheless typically plot raw counts. → Distinct-IP "
-     "weighting, per-million-IPv4 normalisation, and cross-validation of geolocation against registry data."),
-    ("G4 – Temporal semantics. ", "Timelines in investigative tools [L2] do not distinguish event time from report time. "
-     "Feeds record when something was reported, not when it was active. → Explicit report-time labelling; observation-"
-     "only timestamps excluded."),
-    ("G5 – Integrated, reproducible OSINT visualization over public data. ", "Surveys [L3, L12] note that most systems "
-     "address one data type or view, and that evaluation is rare [L12]. → One provenance-labelled model feeds four "
-     "coordinated views, built from a hash-verified public snapshot that anyone can re-run."),
-    ("G6 – Ethics built into the tool. ", "[L4] sets out the legal and ethical principles, but technical controls are "
-     "rarely described. → Pseudonymised reporters, defanged reports, passive-only collection."),
+    ("G1 – Evidence provenance in the view. ", "CTI graph and knowledge-graph systems [L4, L5] draw links but do not show, "
+     "on the link itself, which source record created it, by what method and with what confidence. OSINT reviews [L1, L2] "
+     "note that explainability is rarely addressed. → Every edge in this platform carries source, record ID, time, "
+     "method and confidence, shown in an evidence panel."),
+    ("G2 – False links through shared infrastructure. ", "Infrastructure-based correlation [L14] and graph mining [L6] "
+     "link everything that shares a host, IP or provider. In open feeds, code-hosting and CDN platforms are shared by "
+     "thousands of unrelated actors, and the effect on visual analysis is rarely measured. → Hub suppression, quantified "
+     "before and after (Section 8.3)."),
+    ("G3 – Normalisation and uncertainty in geographic views. ", "Hotspot methods are parameter-sensitive [L8] and "
+     "geolocation databases are unstable [L9]. Threat maps nevertheless typically plot raw counts from one provider. → "
+     "Distinct-IP weighting, per-million-IPv4 normalisation, and cross-validation of geolocation against registry data."),
+    ("G4 – Temporal semantics. ", "Timeline research [L16] studies layout but not the meaning of the timestamps. Feeds "
+     "record when something was reported, not when it was active, and feed timeliness differs [L13]. → Explicit "
+     "report-time labelling, window filtering, and exclusion of observation-only timestamps."),
+    ("G5 – Investigation-oriented, evaluated dashboards over multiple open feeds. ", "Dashboards mostly target "
+     "operational monitoring [L10]; feed studies [L12, L13] do not visualise relationships. → One "
+     "provenance-labelled model over three feeds drives four coordinated views. The views are evaluated with "
+     "quantitative misinterpretation experiments, from a hash-verified snapshot anyone can re-run."),
+    ("G6 – Ethics built into the tool. ", "[L3] shows that acceptance of OSINT depends on transparency and privacy, but "
+     "technical controls in tools are rarely described. → Pseudonymised reporters, defanged reports, passive-only "
+     "collection."),
 ]
 for lead, text in gaps:
     bullet(text, lead)
@@ -420,12 +432,50 @@ table(["Question", "Graph (overview)", "Link chart", "Timeline", "Geo heat map",
     ["IQ7 reporting community", "●●● (bipartite)", "●●", "●", "●", "●"],
 ], "Suitability of visualization techniques per investigative question", widths=[4, 2.6, 2.2, 2.2, 2.4, 2.8], size=8.5)
 table(["Technique", "Best for", "Weak for", "How it misleads", "Safeguard implemented"], [
-    ["Graph (cluster overview)", "Seeing groups, components, hubs; centrality", "Large dense data (hairball) [L6]; reading time", "Proximity read as relationship; hubs merge unrelated campaigns", "Hub suppression; only infrastructure edges form clusters; cap of 600 nodes; size = betweenness"],
+    ["Graph (cluster overview)", "Seeing groups, components, hubs; centrality", "Large dense data (hairball); reading time", "Proximity read as relationship; hubs merge unrelated campaigns", "Hub suppression; only infrastructure edges form clusters; cap of 600 nodes; size = betweenness"],
     ["Link chart (ego expansion)", "Explaining one indicator; pivoting step by step", "Global patterns", "Expanding through a CDN floods the chart; enrichment links look like feed facts", "Per-relation expansion cap with hidden count; dashed lines for DNS/geo, dotted for tag-inferred; hub border; evidence panel"],
     ["Timeline", "Sequence, bursts, campaign duration", "Relationships, place", "Report time read as attack time; old IOCs re-listed look new", "'Report time (UTC)' label; window filter; OpenPhish observation times excluded; z-score bursts"],
     ["Geographic heat map / choropleth", "Concentration in space", "Causality, attribution", "Raw counts mirror hosting size; one server with 10k URLs dominates; server location read as attacker location", "Distinct-IP weighting; per-million-IPv4 normalisation; metric switch with warning; agreement rate shown"],
     ["Temporal heat map (day × hour)", "Periodicity, tempo", "Exact sequence", "Reporter working hours read as attacker hours", "Caveat; UTC stated"],
 ], "Strengths, failure modes and safeguards per technique", widths=[2.6, 2.8, 2.4, 4, 4.6], size=8)
+
+h2("5.1 Worked investigation: how the views support each other")
+para("To justify the selection in practice, the following investigation was run end to end on the snapshot using only the "
+     "dashboard. Each step uses the view suited to the question at that point, and each safeguard is visible where it "
+     "matters.")
+import sqlite3 as _sq
+_con = _sq.connect(settings.DB_PATH)
+_r = _con.execute("SELECT attrs, records, first_seen, last_seen FROM entities WHERE id='ip:176.65.134.121'").fetchone()
+_con.close()
+if _r:
+    _a = json.loads(_r[0])
+    _c = next((c for c in top_c if c["id"] == "C0001"), top_c[0])
+    steps = [
+        ("Step 1 – Entry point (IOC extraction). ", "An analyst pastes a defanged note containing 176.65.134[.]121. The "
+         "extractor refangs it and finds it in the dataset as an entity reported by URLhaus (Figure 10)."),
+        ("Step 2 – Link chart (IQ2). ", f"Expanding the IP shows {_r[1]} URL records hosted on it, on ports "
+         f"{', '.join(str(x) for x in _a.get('ports', []))}. Only 15 per relation are drawn, and the chart states how many are "
+         f"hidden. The dashed edges show {_a.get('asn')} ({_a.get('isp')}) and {_a.get('country')}; dashed means they come from "
+         f"enrichment, not from the feed (Figure 4). The evidence panel shows that ip-api and Team Cymru agree on the ASN "
+         f"({_a.get('cymru_asn')}) and that the registry country is {_a.get('registry_cc')}."),
+        ("Step 3 – Graph (IQ1, IQ6). ", f"The IP belongs to cluster {_c['id']}, the largest infrastructure cluster after hub "
+         f"suppression: {_c['indicators']} indicators, family purity {_c['purity']}, dominated by "
+         f"{next(iter(_c['families']))}. The IP is the highest-degree node in the suppressed graph (Table 12), so it is the "
+         f"pivot to act on first."),
+        ("Step 4 – Timeline (IQ3). ", f"The cluster was reported between {(_r[2] or '')[:10]} and {(_r[3] or '')[:10]}. The "
+         f"timeline labels this as report time, so the analyst records 'reported active from …', not 'attack started on …'."),
+        ("Step 5 – Heat map (IQ4). ", "Germany appears among the top hosting countries by distinct IPs. Switching to the "
+         "normalised metric shows that Germany is not over-represented for its address space. This single server is "
+         "therefore a hosting-abuse case, not evidence of a German hotspot."),
+        ("Step 6 – Report. ", "The cluster report (Figure 11) lists every entity defanged, with its evidence trail and a "
+         "stated confidence (single feed → medium), ready to send to the hosting provider's abuse contact."),
+    ]
+    for lead, text in steps:
+        bullet(text, lead)
+para("Without the safeguards, the same walk would have gone wrong at three points. Expanding a GitHub-hosted indicator "
+     "would have pulled in 13,580 unrelated entities. The country map would have suggested a German hotspot. The report "
+     "dates could have been quoted as attack dates. With them, every statement in the final report can be traced to a "
+     "source record.")
 
 # ======================================================================= 6 processing & correlation
 h1("6. Data Processing, Correlation and Analysis")
@@ -539,7 +589,7 @@ h2("8.2 Cross-source validation")
 para("Every derived attribute that could be checked against an independent source was checked.")
 table(["Check", "Sources compared", "Compared", "Agreement", "Interpretation"], [
     ["ASN of each IP", "ip-api vs Team Cymru (BGP)", fmt(ag["asn_compared"]), pct(ag["asn_agreement"]), "High: ASN attribution is reliable"],
-    ["Country of each IP", "ip-api geolocation vs RIR registry country (Cymru)", fmt(ag["country_compared"]), pct(ag["country_agreement"]), "Country-level location is mostly reliable; disagreements are shown as a caveat on the map [L11]"],
+    ["Country of each IP", "ip-api geolocation vs RIR registry country (Cymru)", fmt(ag["country_compared"]), pct(ag["country_agreement"]), "Country-level location is mostly reliable; disagreements are shown as a caveat on the map [L9]"],
     ["Indicator corroboration", "URLhaus vs ThreatFox vs OpenPhish", f"{fmt(cf['host']['total'] + cf['ip']['total'])} hosts+IPs", f"{cf['host']['multi_source'] + cf['ip']['multi_source']} multi-feed", "Multi-feed entities flagged as higher confidence in reports"],
     ["Cluster consistency", "Infrastructure clusters vs ThreatFox/URLhaus family labels", fmt(exp["with"]["labelled_clusters"]), f"purity {exp['with']['weighted_purity']}", "Clusters align with independent family labels"],
 ], "Cross-source validation results", widths=[2.8, 3.8, 2.2, 2.2, 5.5], size=8.5)
@@ -603,7 +653,7 @@ bullet(" the safeguards were evaluated through data experiments, not a user stud
 h1("9. Ethical and Legal Considerations")
 bullet(" all data comes from public feeds and passive lookups (DNS, registry, geolocation). The platform never connects to, scans, downloads from or logs in to any indicator.", "Passive collection only:")
 bullet(" abuse.ch data is published for free use under its terms of use; OpenPhish Community and ip-api free tiers are used for non-commercial, academic purposes within documented rate limits; all requests carry an identifying User-Agent.", "Terms of service:")
-bullet(" the platform analyses infrastructure, not people. Reporter handles are replaced by stable pseudonyms (R-xxxxxx) in every output and used only in aggregate. No WHOIS registrant data or other personal data is collected, in line with purpose limitation and data minimisation [L4], [R5].", "Privacy and minimisation:")
+bullet(" the platform analyses infrastructure, not people. Reporter handles are replaced by stable pseudonyms (R-xxxxxx) in every output and used only in aggregate. No WHOIS registrant data or other personal data is collected, in line with purpose limitation and data minimisation [L3], [R5].", "Privacy and minimisation:")
 bullet(" the committed snapshot is gzip-compressed, so live malicious URLs are not clickable or indexed in the repository. HTML reports defang every indicator (hxxp, [.]).", "Safe handling of malicious content:")
 bullet(" every view states what it does not show (hosting location ≠ attacker, report time ≠ attack time, link ≠ same operator). Cluster reports state their confidence and evidence. Results are triage aids to be verified by an analyst before any blocking or reporting [R7].", "Responsible presentation:")
 bullet(" no system is accessed without authorisation, which keeps the work clear of computer-misuse provisions such as the Information Technology Act, 2000 (India) [R6] and the US Computer Fraud and Abuse Act [R8]. This is a design intention, not legal advice.", "Legal:")
@@ -647,21 +697,22 @@ para("Source code, phase-by-phase commit history, the frozen dataset snapshot an
 h1("References")
 para("Literature survey", bold=True)
 refs = [
-    "[L1] P. Pirolli and S. Card, \"The sensemaking process and leverage points for analyst technology as identified through cognitive task analysis,\" in Proc. Int. Conf. on Intelligence Analysis, McLean, VA, 2005.",
-    "[L2] J. Stasko, C. Görg and Z. Liu, \"Jigsaw: Supporting investigative analysis through interactive visualization,\" Information Visualization, vol. 7, no. 2, pp. 118–132, 2008.",
-    "[L3] J. Pastor-Galindo, P. Nespoli, F. Gómez Mármol and G. Martínez Pérez, \"The not yet exploited goldmine of OSINT: Opportunities, open challenges and future trends,\" IEEE Access, vol. 8, pp. 10282–10304, 2020.",
-    "[L4] I. Böhm and S. Lolagar, \"Open source intelligence: Introduction, legal, and ethical considerations,\" International Cybersecurity Law Review, vol. 2, pp. 317–337, 2021.",
-    "[L5] I. Herman, G. Melançon and M. S. Marshall, \"Graph visualization and navigation in information visualization: A survey,\" IEEE Trans. Visualization and Computer Graphics, vol. 6, no. 1, pp. 24–43, 2000.",
-    "[L6] M. Ghoniem, J.-D. Fekete and P. Castagliola, \"A comparison of the readability of graphs using node-link and matrix-based representations,\" in Proc. IEEE Symp. on Information Visualization (InfoVis), 2004, pp. 17–24.",
-    "[L7] V. D. Blondel, J.-L. Guillaume, R. Lambiotte and E. Lefebvre, \"Fast unfolding of communities in large networks,\" J. Statistical Mechanics: Theory and Experiment, P10008, 2008.",
-    "[L8] V. E. Krebs, \"Mapping networks of terrorist cells,\" Connections, vol. 24, no. 3, pp. 43–52, 2002.",
-    "[L9] J. Xu and H. Chen, \"Criminal network analysis and visualization,\" Communications of the ACM, vol. 48, no. 6, pp. 100–107, 2005.",
-    "[L10] S. Chainey, L. Tompson and S. Uhlig, \"The utility of hotspot mapping for predicting spatial patterns of crime,\" Security Journal, vol. 21, no. 1–2, pp. 4–28, 2008.",
-    "[L11] I. Poese, S. Uhlig, M. A. Kaafar, B. Donnet and B. Gueye, \"IP geolocation databases: Unreliable?\" ACM SIGCOMM Computer Communication Review, vol. 41, no. 2, pp. 53–56, 2011.",
-    "[L12] H. Shiravi, A. Shiravi and A. A. Ghorbani, \"A survey of visualization systems for network security,\" IEEE Trans. Visualization and Computer Graphics, vol. 18, no. 8, pp. 1313–1329, 2012.",
-    "[L13] S. Noel, E. Harley, K. H. Tam, M. Limiero and M. Share, \"CyGraph: Graph-based analytics and visualization for cybersecurity,\" in Handbook of Statistics, vol. 35, Elsevier, 2016, pp. 117–167.",
-    "[L14] C. Wagner, A. Dulaunoy, G. Wagener and A. Iklody, \"MISP: The design and implementation of a collaborative threat intelligence sharing platform,\" in Proc. ACM Workshop on Information Sharing and Collaborative Security (WISCS), 2016, pp. 49–56.",
-    "[L15] M. Correll and J. Heer, \"Black hat visualization,\" in Proc. IEEE VIS Workshop on Dealing with Cognitive Biases in Visualisations (DECISIVe), 2017.",
+    "[L1] A. Yadav, A. Kumar and V. Singh, \"Open-source intelligence: a comprehensive review of the current state, applications and future perspectives in cyber security,\" Artificial Intelligence Review, vol. 56, pp. 12407–12438, 2023. doi:10.1007/s10462-023-10454-y",
+    "[L2] T. O. Browne, M. Abedin and M. J. M. Chowdhury, \"A systematic review on research utilising artificial intelligence for open source intelligence (OSINT) applications,\" International Journal of Information Security, vol. 23, pp. 2911–2938, 2024. doi:10.1007/s10207-024-00868-2",
+    "[L3] T. Riebe, T. Biselli, M.-A. Kaufhold and C. Reuter, \"Privacy concerns and acceptance factors of OSINT for cybersecurity: A representative survey,\" Proceedings on Privacy Enhancing Technologies, vol. 2023, no. 1, pp. 477–493, 2023. doi:10.56553/popets-2023-0028",
+    "[L4] F. Böhm, F. Menges and G. Pernul, \"Graph-based visual analytics for cyber threat intelligence,\" Cybersecurity, vol. 1, art. 16, 2018. doi:10.1186/s42400-018-0017-4",
+    "[L5] I. Sarhan and M. Spruit, \"Open-CyKG: An open cyber threat intelligence knowledge graph,\" Knowledge-Based Systems, vol. 233, art. 107524, 2021. doi:10.1016/j.knosys.2021.107524",
+    "[L6] B. Yan, C. Yang, C. Shi, Y. Fang, Q. Li, Y. Ye and J. Du, \"Graph mining for cybersecurity: A survey,\" ACM Transactions on Knowledge Discovery from Data, vol. 18, no. 2, pp. 1–52, 2023. doi:10.1145/3610228",
+    "[L7] I. Pete, J. Hughes, Y. T. Chua and M. Bada, \"A social network analysis and comparison of six dark web forums,\" in Proc. IEEE European Symposium on Security and Privacy Workshops (EuroS&PW), 2020, pp. 484–493. doi:10.1109/EuroSPW51379.2020.00071",
+    "[L8] Y. Hu, F. Wang, C. Guin and H. Zhu, \"A spatio-temporal kernel density estimation framework for predictive crime hotspot mapping and evaluation,\" Applied Geography, vol. 99, pp. 89–97, 2018. doi:10.1016/j.apgeog.2018.08.001",
+    "[L9] M. Gouel, K. Vermeulen, R. Beverly, O. Fourmaux and T. Friedman, \"IP geolocation database stability and implications for network research,\" in Proc. Network Traffic Measurement and Analysis Conference (TMA), IFIP, 2021.",
+    "[L10] L. Jiang, A. Jayatilaka, M. Nasim, M. Grobler, M. Zahedi and M. A. Babar, \"Systematic literature review on cyber situational awareness visualizations,\" IEEE Access, vol. 10, pp. 57525–57554, 2022. doi:10.1109/ACCESS.2022.3178195",
+    "[L11] A. Komadina, Ž. Mihajlović and S. Groš, \"Analysis of the design space for cybersecurity visualizations in VizSec,\" in Proc. IEEE Symposium on Visualization for Cyber Security (VizSec), 2022, pp. 1–11. doi:10.1109/VizSec56996.2022.9941422",
+    "[L12] V. G. Li, M. Dunn, P. Pearce, D. McCoy, G. M. Voelker, S. Savage and K. Levchenko, \"Reading the tea leaves: A comparative analysis of threat intelligence,\" in Proc. 28th USENIX Security Symposium, 2019.",
+    "[L13] X. Bouwman, H. Griffioen, J. Egbers, C. Doerr, B. Klievink and M. van Eeten, \"A different cup of TI? The added value of commercial threat intelligence,\" in Proc. 29th USENIX Security Symposium, 2020, pp. 433–450.",
+    "[L14] U. Kumarasinghe, M. Nabeel and C. Elvitigala, \"Blocklist-Forecast: Proactive domain blocklisting by identifying malicious hosting infrastructure,\" in Proc. 27th Int. Symposium on Research in Attacks, Intrusions and Defenses (RAID), ACM, 2024, pp. 35–48. doi:10.1145/3678890.3678925",
+    "[L15] L. Y.-H. Lo, A. Gupta, K. Shigyo, A. Wu, E. Bertini and H. Qu, \"Misinformed by visualization: What do we learn from misinformative visualizations?\" Computer Graphics Forum, vol. 41, no. 3, pp. 515–525, 2022. doi:10.1111/cgf.14559",
+    "[L16] S. Di Bartolomeo, A. Pandey, A. Leventidis, D. Saffo, U. H. Syeda, E. Carstensdottir, M. Seif El-Nasr, M. A. Borkin and C. Dunne, \"Evaluating the effect of timeline shape on visualization task performance,\" in Proc. ACM CHI Conference on Human Factors in Computing Systems, 2020, pp. 1–12. doi:10.1145/3313831.3376237",
 ]
 for r in refs:
     para(r, size=9.5, space_after=3)
@@ -676,6 +727,7 @@ for r in [
     "[R7] P. Cichonski, T. Millar, T. Grance and K. Scarfone, \"Computer Security Incident Handling Guide,\" NIST SP 800-61 Rev. 2, 2012.",
     "[R8] 18 U.S.C. § 1030, Computer Fraud and Abuse Act.",
     "[R9] A. Hagberg, D. Schult and P. Swart, \"Exploring network structure, dynamics, and function using NetworkX,\" in Proc. 7th Python in Science Conf. (SciPy), 2008, pp. 11–15.",
+    "[R11] V. D. Blondel, J.-L. Guillaume, R. Lambiotte and E. Lefebvre, \"Fast unfolding of communities in large networks,\" J. Statistical Mechanics: Theory and Experiment, P10008, 2008 (Louvain algorithm used in Section 6.3).",
     "[R10] M. Franz, C. T. Lopes, G. Huck, Y. Dong, O. Sumer and G. D. Bader, \"Cytoscape.js: a graph theory library for visualisation and analysis,\" Bioinformatics, vol. 32, no. 2, pp. 309–311, 2016.",
 ]:
     para(r, size=9.5, space_after=3)
