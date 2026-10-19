@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+
+# Secrets
+.env
+
+# Generated data (re-created by the pipeline; the frozen snapshot in data/snapshot/ is committed)
+data/raw/*
+!data/raw/.gitkeep
+data/processed/*
+!data/processed/.gitkeep
+data/*.db
+reports/*
+!reports/.gitkeep
+logs/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+~$*.docx
