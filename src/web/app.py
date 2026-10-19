@@ -52,7 +52,7 @@ def link():
 
 @app.route("/timeline")
 def timeline():
-    return render_template("timeline.html", s=load("summary.json"), active="timeline")
+    return render_template("timeline.html", s=load("summary.json"), window_days=settings.WINDOW_DAYS, active="timeline")
 
 
 @app.route("/heatmap")
@@ -73,7 +73,7 @@ def clusters():
 @app.route("/extract", methods=["GET", "POST"])
 def extract_page():
     from src.extraction.entities import extract_iocs
-    text, found, matches = request.form.get("text", ""), None, []
+    text, found, matches = request.values.get("text", ""), None, []
     if text:
         found = extract_iocs(text)
         keys = ([f"url:{u}" for u in found["url"]] + [f"ip:{i}" for i in found["ip"]] +

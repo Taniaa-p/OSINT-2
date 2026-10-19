@@ -18,12 +18,13 @@
 <script>
 const cy = cytoscape({container: document.getElementById('cy'), elements: [],
   style: [
-    {selector: 'node', style: {'background-color': e => TYPE_COLORS[e.data('type')] || '#888', label: 'data(label)',
-      color: '#dde', 'font-size': 9, width: 18, height: 18, 'text-valign': 'bottom'}},
+    {selector: 'node', style: {'background-color': e => TYPE_COLORS[e.data('type')] || '#888',
+      label: e => e.data('type') === 'url' ? '…' + e.data('label').split('/').slice(3).join('/').slice(-18) : e.data('label'),
+      color: '#dde', 'font-size': 7, width: 14, height: 14, 'text-valign': 'bottom', 'min-zoomed-font-size': 6}},
     {selector: 'node[?hub]', style: {'border-width': 3, 'border-color': '#ef5b5b'}},
     {selector: 'node.center', style: {width: 30, height: 30, 'border-width': 3, 'border-color': '#fff'}},
     {selector: 'edge', style: {width: 1.4, 'line-color': '#55607a', 'target-arrow-shape': 'triangle',
-      'target-arrow-color': '#55607a', 'curve-style': 'bezier', label: 'data(rel)', 'font-size': 7, color: '#9aa3b2'}},
+      'target-arrow-color': '#55607a', 'curve-style': 'bezier', label: 'data(rel)', 'font-size': 5, color: '#9aa3b2'}},
     {selector: 'edge[method = "dns"], edge[method ^= "geo"]', style: {'line-style': 'dashed'}},
     {selector: 'edge[method = "tag-inferred"]', style: {'line-style': 'dotted', 'line-color': '#a06060'}}]});
 async function expand(id, reset) {
@@ -35,7 +36,7 @@ async function expand(id, reset) {
   cy.getElementById(d.center).addClass('center');
   const h = Object.entries(d.hidden).map(([k, v]) => `${v} more "${k}"`).join(', ');
   document.getElementById('hidden').textContent = h ? `Expansion of ${d.center} capped: ${h} not drawn.` : '';
-  cy.layout({name: 'cose', animate: false, nodeRepulsion: 6000, idealEdgeLength: 70}).run();
+  cy.layout({name: 'cose', animate: false, nodeRepulsion: 6000, idealEdgeLength: 110}).run();
   showEvidence(d.center, document.getElementById('evidence'));
 }
 cy.on('tap', 'node', ev => showEvidence(ev.target.id(), document.getElementById('evidence')));

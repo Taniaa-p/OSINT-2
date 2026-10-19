@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/plotly.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
 {% endblock %}
 {% block body %}
 <h1>Heat maps</h1>
@@ -30,8 +30,8 @@
 <script>
 const LAY = {paper_bgcolor:'#171a21', plot_bgcolor:'#171a21', font:{color:'#e6e8ec'}, margin:{t:30,l:60,r:20,b:40}};
 const map = window.L.map('map', {worldCopyJump: true}).setView([25, 10], 2);
-window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-  {attribution: '&copy; OpenStreetMap contributors &copy; CARTO', maxZoom: 12}).addTo(map);
+window.L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {attribution: '&copy; OpenStreetMap contributors', maxZoom: 12}).addTo(map);
 fetch('/api/geo').then(r => r.json()).then(g => {
   window.L.heatLayer(g.points, {radius: 14, blur: 18, maxZoom: 6, minOpacity: 0.35}).addTo(map);
   const draw = m => {
@@ -42,7 +42,9 @@ fetch('/api/geo').then(r => r.json()).then(g => {
       {...LAY, geo: {bgcolor: '#171a21', showframe: false, projection: {type: 'natural earth'}, landcolor: '#2a2f3a', showland: true},
        title: {text: m === 'ips_per_million_ipv4' ? 'Normalised (countries with ≥5 IPs)' : 'Raw ' + m, font: {size: 13}}}, {responsive: true});
   };
-  draw('ips');
+  const sel = document.getElementById('metric');
+  sel.value = new URLSearchParams(location.search).get('metric') || 'ips';
+  draw(sel.value);
   document.getElementById('metric').onchange = e => draw(e.target.value);
   const a = g.top_asns.slice().reverse();
   Plotly.newPlot('asn', [{type: 'bar', orientation: 'h', x: a.map(x => x.ips), y: a.map(x => x.asn + ' ' + (x.name || '').slice(0, 22)),

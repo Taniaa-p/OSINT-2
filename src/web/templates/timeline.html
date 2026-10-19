@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block head %}<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/plotly.min.js"></script>{% endblock %}
+{% block head %}<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>{% endblock %}
 {% block body %}
 <h1>Timeline</h1>
-<div class="sub">Daily volume of newly reported indicators by malware family (top 8), with statistical bursts (z ≥ 2) marked. Below: lifespan of the 25 largest infrastructure clusters.</div>
+<div class="sub">Daily volume of newly reported indicators by malware family (top 8), with statistical bursts (z ≥ 2) marked. Below: lifespan of the 25 largest infrastructure clusters (clipped to the investigation window; bars reaching the left edge started earlier).</div>
 <div class="caveat">Times are <b>first-reported times in the feeds (UTC)</b>, not infection or registration times. A peak can mean a busy reporter as easily as a busy attacker. OpenPhish entries have no timestamp, so they are excluded instead of being drawn at the download time.</div>
 <div class="card"><div id="daily" style="height:430px"></div></div>
 <h2>Cluster lifespans (campaign timeline)</h2>
@@ -20,14 +20,16 @@ const PAL = ['#4f8cff','#ef5b5b','#3fbf7f','#f2b84b','#b07cff','#20a39e','#e07b3
 fetch('/api/timeline').then(r => r.json()).then(d => {
   const fams = Object.keys(d.series);
   const traces = fams.map((f, i) => ({x: d.days, y: d.series[f], name: f, type: 'bar', marker: {color: PAL[i % PAL.length]}}));
-  Plotly.newPlot('daily', traces, {...L, barmode: 'stack', yaxis: {...L.yaxis, title: 'new indicators / day'},
-    xaxis: {...L.xaxis, title: 'first reported (UTC)'}}, {responsive: true});
+  Plotly.newPlot('daily', traces, {...L, barmode: 'stack', legend: {orientation: 'h', y: 1.12},
+    yaxis: {...L.yaxis, type: 'linear', title: 'new indicators / day'},
+    xaxis: {...L.xaxis, type: 'date', title: 'first reported (UTC)'}}, {responsive: true});
 });
 const cl = {{ s.clusters_top|tojson }};
 const rows = cl.filter(c => c.first_seen).reverse();
-Plotly.newPlot('gantt', [{type: 'bar', orientation: 'h', y: rows.map(c => c.id + ' ' + Object.keys(c.families)[0]),
+Plotly.newPlot('gantt', [{type: 'bar', orientation: 'h', y: rows.map(c => c.id + ' ' + c.label.split(' cluster')[0]),
   base: rows.map(c => c.first_seen), x: rows.map(c => new Date(c.last_seen) - new Date(c.first_seen) || 3.6e6),
   text: rows.map(c => c.indicators + ' indicators'), hovertemplate: '%{y}<br>%{base} → +%{x}ms<br>%{text}<extra></extra>',
-  marker: {color: '#4f8cff'}}], {...L, margin: {t: 20, l: 230, r: 20, b: 50}, xaxis: {...L.xaxis, type: 'date'}}, {responsive: true});
+  marker: {color: '#4f8cff'}}], {...L, margin: {t: 20, l: 230, r: 20, b: 50}, xaxis: {...L.xaxis, type: 'date',
+  range: [new Date(Date.parse(rows.reduce((m, c) => c.last_seen > m ? c.last_seen : m, '')) - {{ window_days }} * 864e5), rows.reduce((m, c) => c.last_seen > m ? c.last_seen : m, '')]}}, {responsive: true});
 </script>
 {% endblock %}

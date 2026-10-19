@@ -73,7 +73,10 @@ def build_graph(enrich_first: bool = False) -> dict:
 
     manifest = json.loads((settings.RAW_DIR / "manifest.json").read_text())
     raw = parsers.parse_all(settings.RAW_DIR, manifest)
-    records, rejected = normalise_all(raw, settings.WINDOW_DAYS)
+    # anchor the window to the collection time (not "now") so re-runs are reproducible
+    from datetime import datetime
+    collected = datetime.fromisoformat(manifest["collected_at"])
+    records, rejected = normalise_all(raw, settings.WINDOW_DAYS, now=collected)
     with database.connect() as con:
         if settings.OFFLINE:
             enrichers.import_cache(con)
