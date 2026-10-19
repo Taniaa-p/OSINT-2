@@ -6,6 +6,10 @@ Usage:
     python main.py collect --freeze   # also freeze the download as the committed snapshot
     python main.py process        # clean, normalise, extract entities, store in SQLite
     python main.py enrich         # DNS / geolocation / ASN enrichment, then rebuild the graph
+    python main.py analyze        # correlation, graph / temporal / geo / social-network analytics
+    python main.py report         # HTML summary report + reports for the 10 largest clusters
+    python main.py serve          # interactive dashboard on http://127.0.0.1:5000
+    python main.py run-all        # collect -> enrich -> analyze -> report
 """
 import argparse
 import sys
@@ -97,6 +101,36 @@ def cmd_enrich(_args) -> int:
     return 0
 
 
+def cmd_analyze(_args) -> int:
+    from src.analytics import analytics
+    analytics.run()
+    return 0
+
+
+def cmd_report(_args) -> int:
+    import json
+    from src.reporting import report_generator
+    report_generator.render_summary_report()
+    for c in json.loads((settings.PROCESSED_DIR / "clusters.json").read_text())[:10]:
+        report_generator.render_cluster_report(c["id"])
+    log.info("reports written to %s", settings.REPORTS_DIR)
+    return 0
+
+
+def cmd_serve(_args) -> int:
+    from src.web.app import main as serve
+    serve()
+    return 0
+
+
+def cmd_run_all(args) -> int:
+    args.freeze = False
+    for step in (cmd_collect, cmd_enrich, cmd_analyze, cmd_report):
+        if step(args):
+            return 1
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Visualization-Based OSINT Intelligence Platform")
     sub = p.add_subparsers(dest="command", required=True)
@@ -106,6 +140,10 @@ def build_parser() -> argparse.ArgumentParser:
     c.set_defaults(func=cmd_collect)
     sub.add_parser("process", help="normalise and extract entities").set_defaults(func=cmd_process)
     sub.add_parser("enrich", help="enrich with DNS/geo/ASN and rebuild").set_defaults(func=cmd_enrich)
+    sub.add_parser("analyze", help="correlation and analytics").set_defaults(func=cmd_analyze)
+    sub.add_parser("report", help="generate HTML reports").set_defaults(func=cmd_report)
+    sub.add_parser("serve", help="start the dashboard").set_defaults(func=cmd_serve)
+    sub.add_parser("run-all", help="full pipeline").set_defaults(func=cmd_run_all)
     return p
 
 
