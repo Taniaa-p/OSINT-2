@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Extract IOCs from text</h1>
+<div class="sub">Paste a threat report, e-mail or chat excerpt. Indicators are extracted (defanged forms such as <code>hxxp://evil[.]com</code> are accepted) and matched against the dataset.</div>
+<form method="post"><textarea name="text" rows="9" style="width:100%">{{ text }}</textarea><br><br><button>Extract and correlate</button></form>
+{% if found %}
+<h2>Extracted indicators</h2>
+<div class="card"><table>{% for k, vs in found.items() %}<tr><th>{{ k }}</th><td>{% for v in vs %}<code>{{ v }}</code><br>{% else %}-{% endfor %}</td></tr>{% endfor %}</table></div>
+<h2>Matches in the dataset ({{ matches|length }})</h2>
+<div class="card"><table><tr><th>Entity</th><th>Feeds</th><th>First seen</th><th>Cluster</th><th></th></tr>
+{% for m in matches %}<tr><td><code>{{ m.id }}</code>{% if m.hub %} <span class="pill hub">hub</span>{% endif %}</td><td>{{ m.sources|join(', ') }}</td><td>{{ m.first_seen }}</td>
+<td>{% if m.cluster %}<a href="/report/cluster/{{ m.cluster }}">{{ m.cluster }}</a>{% else %}-{% endif %}</td><td><a href="/link?id={{ m.id|urlencode }}">Link chart</a></td></tr>
+{% else %}<tr><td colspan="5">No extracted indicator is present in the dataset.</td></tr>{% endfor %}</table></div>
+{% endif %}
+{% endblock %}

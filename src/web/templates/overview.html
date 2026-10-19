@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Investigation overview</h1>
+<div class="sub">Open threat-intelligence dataset: URLhaus, ThreatFox and OpenPhish, enriched with DNS, ip-api, Team Cymru and RIR statistics. Generated {{ s.generated_at }}.</div>
+<div class="grid">
+  <div class="card kpi"><div class="v">{{ "{:,}".format(s.graph.nodes) }}</div><div class="l">Entities</div></div>
+  <div class="card kpi"><div class="v">{{ "{:,}".format(s.graph.edges) }}</div><div class="l">Relationships</div></div>
+  <div class="card kpi"><div class="v">{{ "{:,}".format(s.experiment_hub_suppression.with.clusters) }}</div><div class="l">Infrastructure clusters</div></div>
+  <div class="card kpi"><div class="v">{{ s.hubs.count }}</div><div class="l">Suppressed hubs</div></div>
+  <div class="card kpi"><div class="v">{{ s.graph.by_type.get('malware', 0) }}</div><div class="l">Malware families</div></div>
+  <div class="card kpi"><div class="v">{{ s.graph.by_type.get('country', 0) }}</div><div class="l">Hosting countries</div></div>
+</div>
+
+<div class="row">
+<div>
+<h2>Entities by type</h2>
+<div class="card"><table>{% for k, v in s.graph.by_type.items()|sort(attribute=1, reverse=True) %}<tr><td>{{ k }}</td><td>{{ "{:,}".format(v) }}</td></tr>{% endfor %}</table></div>
+</div>
+<div>
+<h2>Relationships by type</h2>
+<div class="card"><table>{% for k, v in s.graph.by_relation.items()|sort(attribute=1, reverse=True) %}<tr><td>{{ k }}</td><td>{{ "{:,}".format(v) }}</td></tr>{% endfor %}</table></div>
+</div>
+<div>
+<h2>Cross-source validation</h2>
+<div class="card"><table>
+<tr><td>ASN agreement (ip-api vs Team Cymru)</td><td>{{ "%.1f"|format(100*s.enrichment_agreement.asn_agreement) }}% of {{ "{:,}".format(s.enrichment_agreement.asn_compared) }}</td></tr>
+<tr><td>Geo country = registry country</td><td>{{ "%.1f"|format(100*s.enrichment_agreement.country_agreement) }}% of {{ "{:,}".format(s.enrichment_agreement.country_compared) }}</td></tr>
+{% for t, v in s.cross_feed.items() %}<tr><td>{{ t }} entities in &gt;1 feed</td><td>{{ v.multi_source }} / {{ "{:,}".format(v.total) }}</td></tr>{% endfor %}
+</table></div>
+</div>
+</div>
+
+<h2>Which view answers which question</h2>
+<div class="card"><table>
+<tr><th>Investigative question</th><th>View</th><th>Built-in safeguard</th></tr>
+<tr><td>IQ1 Which indicators share infrastructure?</td><td><a href="/graph">Graph</a></td><td>Multi-tenant hubs suppressed; only infrastructure edges create clusters</td></tr>
+<tr><td>IQ2 What is connected to this indicator, and why?</td><td><a href="/link">Link chart</a></td><td>Every edge shows source, method and confidence; hub expansion capped and counted</td></tr>
+<tr><td>IQ3 When did activity start, peak and stop?</td><td><a href="/timeline">Timeline</a></td><td>Labelled as <i>report</i> time; observation-only times (OpenPhish) excluded</td></tr>
+<tr><td>IQ4 Where is infrastructure concentrated?</td><td><a href="/heatmap">Geo heat map</a></td><td>Weighted by distinct IPs, not URLs; per-million-IPv4 normalisation; hosting ≠ attacker location</td></tr>
+<tr><td>IQ5 What is the operational tempo?</td><td><a href="/heatmap#tempo">Temporal heat map</a></td><td>UTC stated; shows reporter activity, not attacker activity</td></tr>
+<tr><td>IQ6 Which nodes broker between clusters?</td><td><a href="/graph">Graph (betweenness)</a></td><td>Computed after hub removal, so CDNs do not top the list</td></tr>
+<tr><td>IQ7 How is coverage spread across reporters?</td><td><a href="/network">Social network</a></td><td>Pseudonymised handles; aggregate only</td></tr>
+</table></div>
+{% endblock %}

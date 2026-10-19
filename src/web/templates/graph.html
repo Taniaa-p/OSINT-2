@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block head %}<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"></script>{% endblock %}
+{% block body %}
+<h1>Infrastructure graph</h1>
+<div class="sub">The largest shared-infrastructure clusters (connected components after hub suppression). Node size = betweenness centrality; colour = entity type. Click a node for its evidence.</div>
+<div class="caveat">An edge means "observed together in a source record or a DNS resolution", <b>not</b> "operated by the same actor". {{ s.hubs.count }} shared-platform or multi-family hubs (e.g. GitHub, Cloudflare Pages) are hidden as pivots, because linking through them would merge unrelated campaigns.</div>
+<div class="legend" id="legend"></div>
+<div class="row">
+  <div class="card" style="flex:2.2;padding:0"><div id="cy" style="height:640px"></div></div>
+  <div class="card" id="evidence">Select a node.</div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('legend').innerHTML = ['url','host','domain','ip','hash'].map(t => `<span><i style="background:${TYPE_COLORS[t]}"></i>${t}</span>`).join('');
+fetch('/api/graph').then(r => r.json()).then(d => {
+  const cy = cytoscape({container: document.getElementById('cy'), elements: d.elements,
+    style: [
+      {selector: 'node', style: {'background-color': e => TYPE_COLORS[e.data('type')] || '#888',
+        width: e => 8 + Math.sqrt(e.data('btw')) * 120, height: e => 8 + Math.sqrt(e.data('btw')) * 120,
+        label: e => e.data('btw') > 0.002 ? e.data('label') : '', color: '#ccd', 'font-size': 8}},
+      {selector: 'edge', style: {width: 1, 'line-color': '#3a4150', 'curve-style': 'haystack'}},
+      {selector: ':selected', style: {'border-width': 3, 'border-color': '#fff'}}],
+    layout: {name: 'cose', animate: false, nodeRepulsion: 9000, idealEdgeLength: 40, randomize: true}});
+  cy.on('tap', 'node', ev => showEvidence(ev.target.id(), document.getElementById('evidence')));
+});
+</script>
+{% endblock %}

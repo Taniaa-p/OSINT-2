@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block head %}<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.30.2/cytoscape.min.js"></script>{% endblock %}
+{% block body %}
+<h1>Social network: reporting community</h1>
+<div class="sub">Bipartite network of the 25 most active (pseudonymised) reporters and the malware families they report. Grey = reporter, red = family. Edge width = number of indicators.</div>
+<div class="grid">
+  <div class="card kpi"><div class="v">{{ s.sna.reporters }}</div><div class="l">Reporters</div></div>
+  <div class="card kpi"><div class="v">{{ "%.0f"|format(100*s.sna.share_top5_reporters) }}%</div><div class="l">Indicators from top 5 reporters</div></div>
+  <div class="card kpi"><div class="v">{{ s.sna.families_single_reporter }} / {{ s.sna.families }}</div><div class="l">Families seen by one reporter only</div></div>
+  <div class="card kpi"><div class="v">{{ s.sna.projection_density }}</div><div class="l">Co-coverage density</div></div>
+</div>
+<div class="caveat">This network describes <b>who reports</b>, not who attacks. Families reported by a single person have no independent corroboration in this dataset. Handles are pseudonymised (R-xxxxxx).</div>
+<div class="card" style="padding:0"><div id="cy" style="height:600px"></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+fetch('/api/sna').then(r => r.json()).then(d => {
+  cytoscape({container: document.getElementById('cy'), elements: d.elements,
+    style: [
+      {selector: 'node', style: {label: 'data(label)', color: '#dde', 'font-size': 9,
+        'background-color': e => e.data('kind') === 'family' ? '#ef5b5b' : '#9aa3b2',
+        width: e => 10 + Math.sqrt(e.data('size')) * 2, height: e => 10 + Math.sqrt(e.data('size')) * 2}},
+      {selector: 'edge', style: {width: e => 0.5 + Math.log10(1 + e.data('weight')) * 1.5, 'line-color': '#3d4556', 'curve-style': 'haystack'}}],
+    layout: {name: 'cose', animate: false, nodeRepulsion: 12000, idealEdgeLength: 80}});
+});
+</script>
+{% endblock %}

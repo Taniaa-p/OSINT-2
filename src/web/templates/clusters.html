@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Infrastructure clusters</h1>
+<div class="sub">Candidate campaigns: groups of indicators linked through shared hosts, registered domains or IPs (hubs excluded). Purity = share of family labels that agree with the dominant family. <a href="/export/clusters.csv">Export CSV</a> · <a href="/export/gexf">Export GEXF (Gephi)</a></div>
+<div class="card"><table>
+<tr><th>ID</th><th>Dominant family</th><th>Indicators</th><th>IPs</th><th>Purity</th><th>Countries</th><th>Feeds</th><th>First → last seen</th><th></th></tr>
+{% for c in clusters %}
+<tr><td>{{ c.id }}</td><td>{% for f, n in c.families.items() %}{% if loop.index <= 3 %}<span class="pill">{{ f }} ({{ n }})</span>{% endif %}{% endfor %}</td>
+<td>{{ c.indicators }}</td><td>{{ c.ips }}</td><td>{{ c.purity if c.purity is not none else '-' }}</td>
+<td>{{ c.countries.keys()|list|join(', ') if c.countries else '-' }}</td><td>{{ c.sources.keys()|list|join(', ') }}</td>
+<td>{{ (c.first_seen or '')[:10] }} → {{ (c.last_seen or '')[:10] }}</td>
+<td><a href="/report/cluster/{{ c.id }}" target="_blank">Report</a> · <a href="/link?id={{ c.nodes[0]|urlencode }}">Link chart</a></td></tr>
+{% endfor %}
+</table></div>
+{% endblock %}

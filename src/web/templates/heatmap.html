@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.35.2/plotly.min.js"></script>
+{% endblock %}
+{% block body %}
+<h1>Heat maps</h1>
+<div class="sub">Geographic concentration of malicious-infrastructure IPs, and the weekly reporting tempo.</div>
+<div class="caveat">Locations are where the <b>server's IP is geolocated</b> (ip-api), not where the attacker is. One point = one distinct IP, so a single server hosting thousands of URLs does not dominate. Geolocation agrees with the registry country for {{ "%.1f"|format(100*s.enrichment_agreement.country_agreement) }}% of IPs.</div>
+<h2>Geographic heat map (distinct IPs)</h2>
+<div class="card" style="padding:0"><div id="map" style="height:480px"></div></div>
+<h2>Country concentration</h2>
+<div style="margin-bottom:8px">Metric:
+  <select id="metric">
+    <option value="ips">Distinct IPs (recommended raw count)</option>
+    <option value="ips_per_million_ipv4">IPs per million allocated IPv4 addresses (normalised)</option>
+    <option value="urls">URLs (misleading: inflated by single servers)</option>
+  </select></div>
+<div class="caveat" style="margin-top:0">Changing the metric changes the story: the top-10 countries by URLs and by distinct IPs share {{ s.geo_rank_comparison.top10_overlap_urls_vs_ips }}/10 members; raw IPs vs normalised share {{ s.geo_rank_comparison.top10_overlap_ips_vs_normalised }}/10.</div>
+<div class="row">
+  <div class="card"><div id="choro" style="height:430px"></div></div>
+  <div class="card"><div id="asn" style="height:430px"></div></div>
+</div>
+<h2 id="tempo">Temporal heat map: day of week × hour (UTC)</h2>
+<div class="card"><div id="dowhour" style="height:330px"></div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+const LAY = {paper_bgcolor:'#171a21', plot_bgcolor:'#171a21', font:{color:'#e6e8ec'}, margin:{t:30,l:60,r:20,b:40}};
+const map = window.L.map('map', {worldCopyJump: true}).setView([25, 10], 2);
+window.L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+  {attribution: '&copy; OpenStreetMap contributors &copy; CARTO', maxZoom: 12}).addTo(map);
+fetch('/api/geo').then(r => r.json()).then(g => {
+  window.L.heatLayer(g.points, {radius: 14, blur: 18, maxZoom: 6, minOpacity: 0.35}).addTo(map);
+  const draw = m => {
+    const c = g.countries.filter(x => x[m] != null && x.iso3 && (m !== 'ips_per_million_ipv4' || x.ips >= 5));
+    Plotly.react('choro', [{type: 'choropleth', locations: c.map(x => x.iso3), z: c.map(x => x[m]), text: c.map(x => x.name),
+      colorscale: 'YlOrRd', reversescale: false, marker: {line: {color: '#333', width: 0.4}},
+      colorbar: {title: {text: m === 'ips_per_million_ipv4' ? 'per M IPv4' : m}}}],
+      {...LAY, geo: {bgcolor: '#171a21', showframe: false, projection: {type: 'natural earth'}, landcolor: '#2a2f3a', showland: true},
+       title: {text: m === 'ips_per_million_ipv4' ? 'Normalised (countries with ≥5 IPs)' : 'Raw ' + m, font: {size: 13}}}, {responsive: true});
+  };
+  draw('ips');
+  document.getElementById('metric').onchange = e => draw(e.target.value);
+  const a = g.top_asns.slice().reverse();
+  Plotly.newPlot('asn', [{type: 'bar', orientation: 'h', x: a.map(x => x.ips), y: a.map(x => x.asn + ' ' + (x.name || '').slice(0, 22)),
+    marker: {color: '#f2b84b'}}], {...LAY, margin: {t: 30, l: 230, r: 20, b: 40}, title: {text: 'Top hosting ASNs (distinct IPs)', font: {size: 13}}}, {responsive: true});
+});
+fetch('/api/timeline').then(r => r.json()).then(d => {
+  Plotly.newPlot('dowhour', [{type: 'heatmap', z: d.dow_hour, x: [...Array(24).keys()].map(h => h + ':00'),
+    y: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'], colorscale: 'Viridis', colorbar: {title: {text: 'indicators'}}}],
+    {...LAY, xaxis: {title: 'hour (UTC)'}}, {responsive: true});
+});
+</script>
+{% endblock %}

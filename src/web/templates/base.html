@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}OSINT Visual Intelligence{% endblock %}</title>
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --line:#2a2f3a; --text:#e6e8ec; --muted:#9aa3b2;
+          --accent:#4f8cff; --warn:#f2b84b; --bad:#ef5b5b; --ok:#3fbf7f; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:14px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif; background:var(--bg); color:var(--text); }
+  nav { display:flex; gap:4px; align-items:center; padding:10px 20px; background:#0b0d11; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  nav .brand { font-weight:700; margin-right:18px; }
+  nav a { color:var(--muted); text-decoration:none; padding:6px 10px; border-radius:6px; }
+  nav a.active, nav a:hover { color:var(--text); background:var(--panel); }
+  main { padding:20px; max-width:1400px; margin:0 auto; }
+  h1 { font-size:22px; margin:0 0 4px; } h2 { font-size:16px; margin:22px 0 8px; }
+  .sub { color:var(--muted); margin-bottom:14px; }
+  .grid { display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(170px, 1fr)); }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px; }
+  .kpi .v { font-size:24px; font-weight:700; } .kpi .l { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+  table { width:100%; border-collapse:collapse; } th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; font-size:12px; text-transform:uppercase; }
+  .caveat { border-left:3px solid var(--warn); background:#2a2416; padding:10px 14px; border-radius:6px; margin:10px 0; color:#f3e3bf; }
+  .row { display:flex; gap:12px; } .row > * { flex:1; min-width:0; }
+  .pill { display:inline-block; padding:1px 8px; border-radius:10px; background:#253047; color:#bcd0ff; font-size:12px; margin:1px; }
+  .pill.hub { background:#3a2323; color:#ffb4b4; }
+  input, select, textarea, button { background:#0b0d11; color:var(--text); border:1px solid var(--line); border-radius:6px; padding:7px 10px; font:inherit; }
+  button { background:var(--accent); border-color:var(--accent); cursor:pointer; }
+  a { color:#8fb3ff; }
+  #evidence { max-height:600px; overflow:auto; font-size:13px; }
+  .legend span { display:inline-flex; align-items:center; gap:4px; margin-right:12px; color:var(--muted); font-size:12px; }
+  .legend i { width:10px; height:10px; border-radius:50%; display:inline-block; }
+  code { font-size:12px; word-break:break-all; }
+  @media (max-width: 900px) { .row { flex-direction:column; } }
+</style>
+{% block head %}{% endblock %}
+</head>
+<body>
+<nav>
+  <span class="brand">OSINT Visual Intelligence</span>
+  <a href="/" class="{{ 'active' if active=='overview' }}">Overview</a>
+  <a href="/graph" class="{{ 'active' if active=='graph' }}">Graph</a>
+  <a href="/link" class="{{ 'active' if active=='link' }}">Link chart</a>
+  <a href="/timeline" class="{{ 'active' if active=='timeline' }}">Timeline</a>
+  <a href="/heatmap" class="{{ 'active' if active=='heatmap' }}">Heat maps</a>
+  <a href="/network" class="{{ 'active' if active=='network' }}">Social network</a>
+  <a href="/clusters" class="{{ 'active' if active=='clusters' }}">Clusters</a>
+  <a href="/extract" class="{{ 'active' if active=='extract' }}">Extract IOCs</a>
+  <a href="/report/summary">Report</a>
+</nav>
+<main>{% block body %}{% endblock %}</main>
+<script>
+const TYPE_COLORS = {url:'#4f8cff', host:'#3fbf7f', domain:'#20a39e', ip:'#f2b84b', hash:'#b07cff',
+  malware:'#ef5b5b', reporter:'#9aa3b2', asn:'#e07b39', country:'#c9c9c9'};
+async function showEvidence(id, el) {
+  const r = await fetch('/api/entity?id=' + encodeURIComponent(id));
+  if (!r.ok) { el.innerHTML = 'not found'; return; }
+  const {entity: e, edges} = await r.json();
+  const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  let h = `<div><b>${esc(e.type)}</b><br><code>${esc(e.value)}</code></div>`;
+  if (e.hub) h += `<div class="caveat">Suppressed hub: ${esc(e.hub)}. Not used to link indicators.</div>`;
+  h += `<table><tr><th>First seen</th><td>${esc(e.first_seen)}</td></tr><tr><th>Last seen</th><td>${esc(e.last_seen)}</td></tr>
+        <tr><th>Feeds</th><td>${e.sources.map(s=>`<span class="pill">${esc(s)}</span>`).join('') || 'enrichment only'}</td></tr>
+        <tr><th>Records</th><td>${e.records}</td></tr>
+        <tr><th>Cluster</th><td>${e.cluster ? `<a href="/report/cluster/${e.cluster}" target="_blank">${e.cluster}</a>` : '-'}</td></tr>`;
+  for (const [k, v] of Object.entries(e.attrs)) h += `<tr><th>${esc(k)}</th><td>${esc(Array.isArray(v) ? v.join(', ') : v)}</td></tr>`;
+  h += `</table><h2>Evidence (${edges.length} edges)</h2><table><tr><th>relation</th><th>other</th><th>source / method</th><th>conf.</th><th>record</th></tr>`;
+  for (const x of edges.slice(0, 60)) {
+    const other = x.src === e.id ? x.dst : x.src;
+    h += `<tr><td>${esc(x.rel)}</td><td><code>${esc(other)}</code></td><td>${esc(x.source)} / ${esc(x.method)}</td><td>${esc(x.confidence)}</td><td>${esc(x.record_id)}</td></tr>`;
+  }
+  el.innerHTML = h + '</table>';
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
