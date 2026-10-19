@@ -193,6 +193,32 @@ def enrichment_agreement(g) -> dict:
             "top_country_mismatches": [{"geo": a, "registry": b, "n": n} for (a, b), n in mism.most_common(8)]}
 
 
+# ------------------------------------------------------------------ WHOIS / RDAP domain age
+def domain_age(g) -> dict:
+    """Age of each registered domain when it was first reported (first_seen - RDAP
+    registration date). Newly registered domains are a classic sign of attacker-owned
+    infrastructure; old domains suggest compromised legitimate sites."""
+    rows, registrars = [], Counter()
+    for n, d in g.nodes(data=True):
+        if d["type"] in ("domain", "host") and d.get("registered") and d.get("first_seen") \
+                and not d.get("shared_platform"):
+            age = (datetime.fromisoformat(d["first_seen"][:10]) - datetime.fromisoformat(d["registered"])).days
+            rows.append({"source": (d.get("sources") or ["?"])[0], "age": age})
+            registrars[d.get("registrar") or "unknown"] += 1
+    if not rows:
+        return {"domains_with_registration": 0}
+    df = pd.DataFrame(rows)
+    df = df[df.age >= 0]
+    by_src = {src: {"n": int(len(x)), "median_age_days": int(x.age.median()),
+                    "share_under_30_days": round(float((x.age < 30).mean()), 3)}
+              for src, x in df.groupby("source")}
+    return {"domains_with_registration": int(len(df)), "median_age_days": int(df.age.median()),
+            "share_under_7_days": round(float((df.age < 7).mean()), 3),
+            "share_under_30_days": round(float((df.age < 30).mean()), 3),
+            "share_over_1_year": round(float((df.age > 365).mean()), 3),
+            "by_source": by_src, "top_registrars": registrars.most_common(8)}
+
+
 # ------------------------------------------------------------------ graph view for the browser
 def cluster_view(g, cl, btw, community_of, hubs, max_nodes) -> dict:
     """Cytoscape elements for the largest clusters, capped so the view stays readable.
@@ -251,6 +277,7 @@ def run() -> dict:
         "cross_feed": correlator.cross_feed(g),
         "enrichment_agreement": enrichment_agreement(g),
         "geo_rank_comparison": rank_comparison(geo["countries"]),
+        "whois": domain_age(g),
     }
     tl = temporal(g)
     sna = social_network(g)

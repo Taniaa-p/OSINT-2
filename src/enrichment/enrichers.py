@@ -38,6 +38,40 @@ def resolve_a(host: str):
         return {"a": [], "status": type(exc).__name__}
 
 
+_RDAP_BOOTSTRAP = {}
+
+
+def _rdap_base(domain: str) -> str:
+    """Registry RDAP server for the domain's TLD, from the IANA bootstrap file (RFC 9224).
+    Querying registries directly avoids the shared rate limit of public redirectors."""
+    if not _RDAP_BOOTSTRAP:
+        try:
+            for tlds, urls in requests.get(settings.RDAP_BOOTSTRAP_URL, timeout=30).json()["services"]:
+                for t in tlds:
+                    _RDAP_BOOTSTRAP[t] = urls[0].rstrip("/") + "/"
+        except requests.RequestException:
+            pass
+    return _RDAP_BOOTSTRAP.get(domain.rsplit(".", 1)[-1], settings.RDAP_URL.rsplit("domain/", 1)[0])
+
+
+def rdap_lookup(domain: str):
+    """WHOIS data via RDAP (RFC 9083, the JSON successor of WHOIS): registration date
+    and registrar only. Registrant contact data is deliberately not stored."""
+    try:
+        r = requests.get(_rdap_base(domain) + "domain/" + domain, timeout=15,
+                         headers={"User-Agent": settings.USER_AGENT, "Accept": "application/rdap+json"})
+        if r.status_code != 200:
+            return {"status": f"HTTP {r.status_code}"}
+        d = r.json()
+        events = {e.get("eventAction"): e.get("eventDate") for e in d.get("events", [])}
+        registrar = next((v[3] for ent in d.get("entities", []) if "registrar" in ent.get("roles", [])
+                          for v in ent.get("vcardArray", [None, []])[1] if v and v[0] == "fn"), None)
+        return {"registered": events.get("registration"), "expires": events.get("expiration"),
+                "registrar": registrar}
+    except Exception as exc:
+        return {"status": type(exc).__name__}
+
+
 def cymru_lookup(ip: str):
     """'15169 | 8.8.8.0/24 | US | arin | 2023-12-28' -> asn, prefix, registry country."""
     try:
@@ -93,6 +127,17 @@ def enrich(con, records: list) -> dict:
     stats["dns_hosts"] = len(hosts)
     stats["dns_resolved"] = sum(bool(v.get("a")) for v in dns_res.values())
 
+    domains = sorted({r["reg_domain"] for r in records if r["reg_domain"] and not _shared(r["reg_domain"])})
+    cached = database.cache_get(con, "rdap", domains)
+    todo = [d for d in domains if d not in cached or cached[d].get("status") == "HTTP 429"]
+    if todo and not settings.OFFLINE:
+        _rdap_base("example.com")  # load the bootstrap once before the threads start
+        log.info("RDAP/WHOIS: looking up %d registered domains", len(todo))
+        with ThreadPoolExecutor(8) as pool:
+            database.cache_put(con, "rdap", dict(zip(todo, pool.map(rdap_lookup, todo))))
+        con.commit()
+    stats["rdap_domains"] = len(domains)
+
     ips = sorted({r["host"] for r in records if r["host_kind"] == "ip" and ":" not in r["host"]}
                  | {ip for v in dns_res.values() for ip in v.get("a", [])})
     for kind, fn in (("cymru", None), ("geo", None)):
@@ -120,6 +165,12 @@ def apply(con, builder, records: list):
             iid = builder.entity("ip", ip)
             builder.entities[iid]["attrs"]["via_dns"] = True
             builder.edge(hid, iid, "resolves_to", method="dns", confidence=90)
+
+    regs = {r["reg_domain"] for r in records if r["reg_domain"]}
+    for dom, v in database.cache_get(con, "rdap", regs).items():
+        eid = f"domain:{dom}" if f"domain:{dom}" in builder.entities else f"host:{dom}"
+        if eid in builder.entities and v.get("registered"):
+            builder.entities[eid]["attrs"].update(registered=v["registered"][:10], registrar=v.get("registrar"))
 
     ips = [e["value"] for e in builder.entities.values() if e["type"] == "ip"]
     geo = database.cache_get(con, "geo", ips)

@@ -188,7 +188,7 @@ for line in ["Abstract", "1. Problem Definition", "      1.1 Objectives · 1.2 I
              "3. OSINT Data Collection and Source Identification", "      3.1 Chain of custody · 3.2 Dataset profile",
              "4. System Architecture", "      4.1 Data model", "5. Evaluation of Visualization Techniques", "      5.1 Worked investigation: how the views support each other",
              "6. Data Processing, Correlation and Analysis",
-             "      6.1 Cleaning · 6.2 Correlation and hub suppression · 6.3 Graph · 6.4 Temporal · 6.5 Geographic · 6.6 Social network",
+             "      6.1 Cleaning · 6.2 Correlation and hub suppression · 6.3 Graph · 6.4 Temporal · 6.5 Geographic · 6.6 Social network · 6.7 WHOIS / RDAP",
              "7. Tool Implementation and Dashboard", "8. Findings, Evidence and Validation",
              "      8.1 Key findings · 8.2 Cross-source validation · 8.3 Misinterpretation experiments · 8.4 Testing · 8.5 Limitations",
              "9. Ethical and Legal Considerations", "10. Impact and Significance", "11. Future Work", "12. Conclusion", "References"]:
@@ -201,7 +201,7 @@ para(f"Open threat-intelligence feeds publish thousands of malicious indicators 
      f"intelligence an analyst needs is in the relationships the lists do not show: shared servers, campaign time "
      f"spans, and concentrations of infrastructure. This project designs and implements a visualization-based OSINT "
      f"analytics platform. It collected {fmt(sum(1 for _ in src))} public feeds (URLhaus, ThreatFox, OpenPhish) and "
-     f"enriched them with DNS, IP geolocation, an independent ASN registry service and RIR address statistics. From "
+     f"enriched them with DNS, WHOIS (RDAP) registration data, IP geolocation, an independent ASN registry service and RIR address statistics. From "
      f"these it built a provenance-labelled knowledge graph of {fmt(g['nodes'])} entities and {fmt(g['edges'])} "
      f"relationships. It then compared four visualization families (graphs, link charts, timelines and heat maps), "
      f"assigning each the investigative questions it answers best. Each view carries safeguards against "
@@ -230,7 +230,7 @@ para("Visualization closes that gap, but each chart form can also mislead. A for
      "investigative question it is used for and reduces the chance of misinterpreting the evidence.")
 h2("1.1 Objectives")
 table(["#", "Objective", "Measured by"], [
-    ["O1", "Collect a multi-source OSINT dataset with entities, relationships, timestamps, locations and threat indicators", "3 feeds + 4 enrichment sources; SHA-256 manifest"],
+    ["O1", "Collect a multi-source OSINT dataset with entities, relationships, timestamps, locations and threat indicators", "3 feeds + 5 enrichment sources; SHA-256 manifest"],
     ["O2", "Clean, normalise and de-duplicate; extract typed entities", "rejection counts by reason; entity counts"],
     ["O3", "Correlate across sources into a provenance-labelled knowledge graph", "cross-feed overlap; infrastructure clusters"],
     ["O4", "Apply graph, temporal, geographic and social-network analytics", "centrality, Louvain, bursts, normalised geo, SNA"],
@@ -252,7 +252,7 @@ table(["ID", "Investigative question", "Requirement on the view"], [
     ["IQ7", "How is coverage spread across the reporting community?", "Social-network structure"],
 ], "Investigation questions", widths=[1.1, 9, 6.4])
 h2("1.3 Scope and requirements")
-bullet(" passive collection from URLhaus, ThreatFox and OpenPhish; passive enrichment through DNS, ip-api.com, the "
+bullet(" passive collection from URLhaus, ThreatFox and OpenPhish; passive enrichment through DNS, WHOIS/RDAP, ip-api.com, the "
        "Team Cymru IP-to-ASN service and NRO RIR delegation statistics; free-text IOC extraction; correlation, "
        "analytics, visualization, reporting and export.", "In scope:")
 bullet(" active scanning or probing, visiting or downloading malicious URLs, malware execution, attribution of attacks "
@@ -341,7 +341,7 @@ for lead, text in gaps:
 # ======================================================================= 3 data collection
 h1("3. OSINT Data Collection and Source Identification")
 para("The dataset had to contain entities, relationships, timestamps, locations and threat indicators. No single open "
-     "source provides all five, so three primary feeds were combined with four enrichment sources. Table 4 lists every "
+     "source provides all five, so three primary feeds were combined with five enrichment sources. Table 4 lists every "
      "source, what it contributes, how it is accessed and how failure is handled.")
 table(["Source", "Type", "Contributes", "Access method", "Failure handling"], [
     ["abuse.ch URLhaus", "Threat feed (malware URLs)", "URLs, hosts, timestamps, status, tags, reporters", "CSV export (recent, 30 days), no key", "Retry ×3; marked failed in manifest; others continue"],
@@ -349,6 +349,7 @@ table(["Source", "Type", "Contributes", "Access method", "Failure handling"], [
     ["OpenPhish Community", "Phishing feed", "Phishing URLs (no timestamps)", "Plain-text feed", "As above; retrieval time marked as observation time"],
     ["DNS (dnspython)", "Enrichment", "host → IP (A records), NXDOMAIN status", "Standard resolver queries, 32 threads", "Timeout/NXDOMAIN stored as status"],
     ["ip-api.com", "Enrichment", "Geolocation, ASN, ISP, hosting flag", "Batch API (100 IPs/request, ≤15 req/min)", "Rate-limit headers honoured; failed batch logged"],
+    ["WHOIS via RDAP (IANA bootstrap → registry RDAP servers)", "Enrichment (domain registration)", "Registration date, expiry, registrar of each registered domain", "RDAP JSON queries (RFC 9083), 8 threads", "429/404 stored as status; retried on next run"],
     ["Team Cymru IP-to-ASN", "Enrichment (independent)", "ASN, BGP prefix, registry country", "DNS TXT queries (origin.asn.cymru.com)", "Missing value = no comparison"],
     ["NRO RIR delegation stats", "Reference data", "IPv4 addresses allocated per country", "Combined RIR file (57 MB, summarised)", "Normalisation disabled if missing"],
 ], "Open sources used", widths=[2.8, 2.4, 4, 3.6, 3.6], size=8)
@@ -529,6 +530,29 @@ para(f"Reporters (pseudonymised) and malware families form a bipartite network. 
      f"a family seen by a single reporter has no independent corroboration in this dataset, and coverage gaps follow "
      f"the interests of a few contributors.")
 
+h2("6.7 WHOIS / RDAP domain-registration analysis")
+wh = S.get("whois", {})
+para(f"WHOIS registration data was collected through RDAP, the standardised JSON successor of WHOIS (RFC 9083). Each "
+     f"registered domain is sent to its registry's RDAP server, found through the IANA bootstrap file (RFC 9224). Only "
+     f"the registration date and registrar are stored, never registrant contact details. For "
+     f"{fmt(wh.get('domains_with_registration', 0))} non-platform domains with a registration date, the domain's age when "
+     f"it was first reported was computed (first-seen date minus registration date).")
+table(["Measure", "Value"], [
+    ["Domains with RDAP registration date", fmt(wh.get("domains_with_registration", 0))],
+    ["Median age at first report", f"{wh.get('median_age_days')} days"],
+    ["Registered < 7 days before being reported", pct(wh.get("share_under_7_days"))],
+    ["Registered < 30 days before being reported", pct(wh.get("share_under_30_days"))],
+    ["Older than 1 year when reported", pct(wh.get("share_over_1_year"))],
+] + [[f"Median age – {k}", f"{v['median_age_days']} days ({v['n']} domains; {pct(v['share_under_30_days'])} < 30 days)"]
+     for k, v in wh.get("by_source", {}).items()]
+  + [["Most frequent registrars", ", ".join(f"{r} ({n})" for r, n in wh.get("top_registrars", [])[:6])]],
+      "Domain age at first report (WHOIS / RDAP)", widths=[6.5, 9.5])
+para("Two populations are visible. About a third of the domains were registered within a month of being reported, and "
+     "most of those within a week. These are attacker-registered throw-away domains. Roughly 40% were more than a year old, "
+     "which is typical of compromised legitimate websites. The distinction matters for response: a new domain should be "
+     "reported to its registrar for suspension, while an old one usually belongs to a victim whose site has been "
+     "compromised. Domain age is shown in the evidence panel of every domain, so the analyst sees it before acting.")
+
 # ======================================================================= 7 implementation
 h1("7. Tool Implementation and Dashboard")
 para("The pipeline runs from one CLI (python main.py run-all, or the individual collect / enrich / analyze / report / "
@@ -581,6 +605,10 @@ bullet(f" The ten most heavily used hosting ASNs hold "
        f"{fmt(GEO['hosting_split'].get('hosting/datacenter', 0))} IPs are flagged as hosting/datacentre and "
        f"{fmt(GEO['hosting_split'].get('residential/other', 0))} as residential or other, which is consistent with "
        f"compromised home routers in IoT botnets.", "Concentrated hosting:")
+bullet(f" WHOIS/RDAP shows {pct(S.get('whois', {}).get('share_under_7_days'))} of dated malicious domains were registered "
+       f"less than a week before being reported and {pct(S.get('whois', {}).get('share_over_1_year'))} were over a year old. "
+       f"This separates throw-away attacker domains from compromised legitimate sites, which need different responses.",
+       "Two kinds of domains:")
 bullet(f" Only {cf['ip']['multi_source']} of {fmt(cf['ip']['total'])} IPs and {cf['host']['multi_source']} of "
        f"{fmt(cf['host']['total'])} hosts appear in more than one feed. The feeds are largely complementary rather than "
        f"redundant, which supports combining them. It also means most indicators rest on a single source.",
@@ -653,7 +681,7 @@ bullet(" the safeguards were evaluated through data experiments, not a user stud
 h1("9. Ethical and Legal Considerations")
 bullet(" all data comes from public feeds and passive lookups (DNS, registry, geolocation). The platform never connects to, scans, downloads from or logs in to any indicator.", "Passive collection only:")
 bullet(" abuse.ch data is published for free use under its terms of use; OpenPhish Community and ip-api free tiers are used for non-commercial, academic purposes within documented rate limits; all requests carry an identifying User-Agent.", "Terms of service:")
-bullet(" the platform analyses infrastructure, not people. Reporter handles are replaced by stable pseudonyms (R-xxxxxx) in every output and used only in aggregate. No WHOIS registrant data or other personal data is collected, in line with purpose limitation and data minimisation [L3], [R5].", "Privacy and minimisation:")
+bullet(" the platform analyses infrastructure, not people. Reporter handles are replaced by stable pseudonyms (R-xxxxxx) in every output and used only in aggregate. WHOIS (RDAP) lookups store only the registration date and registrar, never registrant names, e-mail addresses or phone numbers, and no other personal data is collected, in line with purpose limitation and data minimisation [L3], [R5].", "Privacy and minimisation:")
 bullet(" the committed snapshot is gzip-compressed, so live malicious URLs are not clickable or indexed in the repository. HTML reports defang every indicator (hxxp, [.]).", "Safe handling of malicious content:")
 bullet(" every view states what it does not show (hosting location ≠ attacker, report time ≠ attack time, link ≠ same operator). Cluster reports state their confidence and evidence. Results are triage aids to be verified by an analyst before any blocking or reporting [R7].", "Responsible presentation:")
 bullet(" no system is accessed without authorisation, which keeps the work clear of computer-misuse provisions such as the Information Technology Act, 2000 (India) [R6] and the US Computer Fraud and Abuse Act [R8]. This is a design intention, not legal advice.", "Legal:")
@@ -721,6 +749,7 @@ for r in [
     "[R1] abuse.ch, \"URLhaus\" and \"ThreatFox\" – data exports and terms of use. https://urlhaus.abuse.ch, https://threatfox.abuse.ch",
     "[R2] OpenPhish, \"Community Phishing Feed.\" https://openphish.com",
     "[R3] ip-api.com, \"Batch JSON API documentation.\" https://ip-api.com/docs/api:batch ; Team Cymru, \"IP to ASN Mapping Service.\" https://www.team-cymru.com/ip-asn-mapping",
+    "[R12] S. Hollenbeck and A. Newton, \"JSON Responses for the Registration Data Access Protocol (RDAP),\" RFC 9083, IETF, 2021; M. Blanchet, \"Finding the Authoritative Registration Data Access Protocol (RDAP) Service,\" RFC 9224, IETF, 2022.",
     "[R4] Number Resource Organization, \"NRO extended allocation and assignment statistics.\" https://ftp.ripe.net/pub/stats/ripencc/nro-stats/",
     "[R5] Regulation (EU) 2016/679 (General Data Protection Regulation), 2016.",
     "[R6] Government of India, The Information Technology Act, 2000 (as amended).",
