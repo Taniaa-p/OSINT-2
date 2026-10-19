@@ -4,6 +4,8 @@ Usage:
     python main.py check          # verify environment and connectivity
     python main.py collect        # download feeds (or restore snapshot when OFFLINE=1)
     python main.py collect --freeze   # also freeze the download as the committed snapshot
+    python main.py process        # clean, normalise, extract entities, store in SQLite
+    python main.py enrich         # DNS / geolocation / ASN enrichment, then rebuild the graph
 """
 import argparse
 import sys
@@ -56,6 +58,45 @@ def cmd_collect(args) -> int:
     return 0
 
 
+def build_graph(enrich_first: bool = False) -> dict:
+    """Normalise -> extract -> (enrich) -> store. Shared by process and enrich."""
+    import json
+    from src.acquisition import parsers
+    from src.enrichment import enrichers
+    from src.extraction.entities import extract
+    from src.preprocessing.normalizer import normalise_all
+    from src.storage import database
+
+    manifest = json.loads((settings.RAW_DIR / "manifest.json").read_text())
+    raw = parsers.parse_all(settings.RAW_DIR, manifest)
+    records, rejected = normalise_all(raw, settings.WINDOW_DAYS)
+    with database.connect() as con:
+        if settings.OFFLINE:
+            enrichers.import_cache(con)
+        stats = enrichers.enrich(con, records) if enrich_first else {}
+        builder = extract(records)
+        enrichers.apply(con, builder, records)
+        database.save_records(con, records)
+        database.save_graph(con, builder.entities, builder.edges)
+        if enrich_first and not settings.OFFLINE:
+            enrichers.export_cache(con)
+        summary = {"raw": len(raw), "clean": len(records), "rejected": rejected,
+                   "entities": len(builder.entities), "edges": len(builder.edges), **stats}
+        database.log_run(con, "process", summary)
+    log.info("graph stored: %s", summary)
+    return summary
+
+
+def cmd_process(_args) -> int:
+    build_graph(enrich_first=False)
+    return 0
+
+
+def cmd_enrich(_args) -> int:
+    build_graph(enrich_first=True)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Visualization-Based OSINT Intelligence Platform")
     sub = p.add_subparsers(dest="command", required=True)
@@ -63,6 +104,8 @@ def build_parser() -> argparse.ArgumentParser:
     c = sub.add_parser("collect", help="download the open-source feeds")
     c.add_argument("--freeze", action="store_true", help="freeze this download as data/snapshot/")
     c.set_defaults(func=cmd_collect)
+    sub.add_parser("process", help="normalise and extract entities").set_defaults(func=cmd_process)
+    sub.add_parser("enrich", help="enrich with DNS/geo/ASN and rebuild").set_defaults(func=cmd_enrich)
     return p
 
 
