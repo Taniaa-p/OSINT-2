@@ -10,3 +10,4 @@ pycountry>=24.6
 matplotlib>=3.8
 python-docx>=1.1
 pytest>=8.0
+mammoth>=1.8
