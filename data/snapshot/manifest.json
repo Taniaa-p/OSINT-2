@@ -1,0 +1,32 @@
+{
+  "collected_at": "2026-10-19T17:13:40+00:00",
+  "sources": {
+    "urlhaus": {
+      "url": "https://urlhaus.abuse.ch/downloads/csv_recent/",
+      "file": "urlhaus_recent.csv",
+      "licence": "CC0 (abuse.ch terms of use)",
+      "retrieved_at": "2026-10-19T17:13:43+00:00",
+      "status": "ok",
+      "bytes": 7869800,
+      "sha256": "bc168ff83c81f1424c74424c39cbfe72e19aeef06d3e113e7a17d38ca50a2ef0"
+    },
+    "threatfox": {
+      "url": "https://threatfox.abuse.ch/export/csv/recent/",
+      "file": "threatfox_recent.csv",
+      "licence": "CC0 (abuse.ch terms of use)",
+      "retrieved_at": "2026-10-19T17:13:44+00:00",
+      "status": "ok",
+      "bytes": 1543610,
+      "sha256": "a435ade364277275c8df79d6082ea643b7eee4cd631c48375cb7e2aaa335766a"
+    },
+    "openphish": {
+      "url": "https://openphish.com/feed.txt",
+      "file": "openphish_feed.txt",
+      "licence": "OpenPhish Community Feed (free, non-commercial)",
+      "retrieved_at": "2026-10-19T17:13:47+00:00",
+      "status": "ok",
+      "bytes": 14307,
+      "sha256": "0447401a73d47149cef29e04b707f4a62312338e1ea97bc8548f25091370fb59"
+    }
+  }
+}

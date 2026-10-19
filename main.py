@@ -2,6 +2,8 @@
 
 Usage:
     python main.py check          # verify environment and connectivity
+    python main.py collect        # download feeds (or restore snapshot when OFFLINE=1)
+    python main.py collect --freeze   # also freeze the download as the committed snapshot
 """
 import argparse
 import sys
@@ -37,10 +39,30 @@ def cmd_check(_args) -> int:
     return 0 if ok else 1
 
 
+def cmd_collect(args) -> int:
+    """Phase 2: acquire the open-source dataset with a chain-of-custody manifest."""
+    from src.acquisition import downloader, parsers, rir_stats
+
+    if settings.OFFLINE:
+        manifest = downloader.restore_snapshot()
+    else:
+        manifest = downloader.collect_feeds()
+        if args.freeze:
+            downloader.freeze_snapshot()
+    rir_stats.build_ipv4_by_country()
+    records = parsers.parse_all(settings.RAW_DIR, manifest)
+    log.info("collection complete: %d raw records from %d sources",
+             len(records), sum(e["status"] == "ok" for e in manifest["sources"].values()))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Visualization-Based OSINT Intelligence Platform")
     sub = p.add_subparsers(dest="command", required=True)
     sub.add_parser("check", help="verify environment and source connectivity").set_defaults(func=cmd_check)
+    c = sub.add_parser("collect", help="download the open-source feeds")
+    c.add_argument("--freeze", action="store_true", help="freeze this download as data/snapshot/")
+    c.set_defaults(func=cmd_collect)
     return p
 
 
